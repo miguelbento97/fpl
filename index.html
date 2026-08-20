@@ -45,9 +45,12 @@ h2::after{content:'';display:block;width:44px;height:4px;border-radius:2px;backg
 .match{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px;border-top:4px solid var(--purple)}
 .match .teams{display:flex;justify-content:space-between;font-weight:800;font-size:1rem}
 .match .lam{display:flex;justify-content:space-between;color:var(--soft);font-size:.76rem;margin:2px 0 8px;font-variant-numeric:tabular-nums}
-.csbar{position:relative;height:8px;border-radius:4px;background:#EDEBF2;overflow:hidden;margin-bottom:4px}
-.csbar i{position:absolute;top:0;bottom:0;left:0;border-radius:4px;background:linear-gradient(90deg,var(--green),#00d774)}
-.csbar.away i{left:auto;right:0;background:linear-gradient(270deg,var(--cyan),#00b8f0)}
+.bar2{position:relative;height:8px;border-radius:4px;background:#EDEBF2;overflow:hidden;margin-bottom:4px}
+.bar2 i{position:absolute;top:0;bottom:0;left:0;border-radius:4px}
+.bar2 i.r{left:auto;right:0}
+.tdot9{display:inline-block;width:9px;height:9px;border-radius:3px;vertical-align:baseline}
+.match .teams .tdot9{margin-right:6px}
+.match .teams span:last-child .tdot9{margin:0 0 0 6px}
 .cslab{display:flex;justify-content:space-between;font-size:.72rem;color:var(--soft)}
 .oddsrow{display:flex;align-items:center;gap:4px;margin-bottom:9px;min-width:0}
 .oddpill{display:inline-flex;align-items:center;gap:3px;background:#F4F2F8;border:1px solid var(--line);border-radius:7px;padding:2px 5px;font-size:.66rem;color:var(--soft);font-weight:600;white-space:nowrap}
@@ -252,6 +255,8 @@ footer{margin-top:40px;font-size:.75rem;color:var(--soft)}
 <script>
 const API='https://script.google.com/macros/s/AKfycbyr2Z-XaYUTkSQ6JbRmECZXsjfChhK5iaqBD0RKvVAP43JKgXZ6cywna7WdMr2qf4x9/exec';
 const LG_AVG_LAMBDA=1.35, LG_AVG_CS=0.28;
+const TEAMCOLORS={ARS:'#EF1B22',AVL:'#7B1F4B',BOU:'#A31621',BHA:'#005BBB',BRE:'#E4573D',CHE:'#2B3FD1',COV:'#A8E4FF',CRY:'#7E3FF2',EVE:'#0B2E75',FUL:'#6B7280',HUL:'#F7A800',IPS:'#3E7BFA',LEE:'#E8D34A',LIV:'#C8102E',MCI:'#58AEE8',MUN:'#6E0F0F',NEW:'#31363B',NFO:'#FF6B6B',SUN:'#FF9AA2',TOT:'#2E4A66'};
+const TC=t=>TEAMCOLORS[t]||'#37003C';
 let PLAYERS=[], ODDS={matches:[]}, TEAMSIG={}, DEADLINE=null, GW=null;
 let HIST=null, HISTLOADED=false;
 let locks=new Set(JSON.parse(localStorage.getItem('fpl_locks')||'[]'));
@@ -335,8 +340,8 @@ function scoreAll(){
 
 /* ---------- quadro da jornada ---------- */
 const TIP_ODDS='Odds decimais justas: casa (1), empate (X), fora (2). Mediana de casas UK com a margem removida, por isso ligeiramente acima do que ves nas casas. Seta: movimento desde o snapshot anterior (verde subiu, rosa desceu).';
-const TIP_LAM='λ = golos esperados de cada equipa neste jogo, implicitos nas odds do mercado (ajuste Poisson ao 1X2 e ao over 2.5).';
-const TIP_CS='CS = probabilidade de manter a baliza a zeros (clean sheet), derivada do λ do adversario.';
+const TIP_LAM='λ = golos esperados de cada equipa neste jogo, implicitos nas odds do mercado (ajuste Poisson ao 1X2 e ao over 2.5). A primeira barra mostra o dominio esperado, quota dos golos esperados de cada equipa, nas cores dos clubes.';
+const TIP_CS='CS = probabilidade de manter a baliza a zeros (clean sheet), derivada do λ do adversario. A segunda barra, em tons claros, mostra o CS de cada defesa ancorado ao lado da sua equipa.';
 function histPair(home,away){
   if(!HIST) return null;
   const rows=HIST.filter(s=>s.home===home&&s.away===away&&s.pH!=null).sort((a,b)=>a.t-b.t);
@@ -362,10 +367,10 @@ function renderMatches(){
     return `
     <div class="match">
       ${oddsrow}
-      <div class="teams"><span>${m.home}</span><span>${m.away}</span></div>
+      <div class="teams"><span><i class="tdot9" style="background:${TC(m.home)}"></i>${m.home}</span><span>${m.away}<i class="tdot9" style="background:${TC(m.away)}"></i></span></div>
       <div class="lam"><span>λ ${m.lambda_home.toFixed(2)}</span><span class="info" data-tip="${TIP_LAM}">i</span><span>λ ${m.lambda_away.toFixed(2)}</span></div>
-      <div class="csbar"><i style="width:${Math.round(m.cs_home*100)}%"></i></div>
-      <div class="csbar away"><i style="width:${Math.round(m.cs_away*100)}%"></i></div>
+      <div class="bar2"><i style="width:${(100*m.lambda_home/(m.lambda_home+m.lambda_away)-1).toFixed(1)}%;background:${TC(m.home)}"></i><i class="r" style="width:${(100*m.lambda_away/(m.lambda_home+m.lambda_away)-1).toFixed(1)}%;background:${TC(m.away)}"></i></div>
+      <div class="bar2"><i style="width:${Math.round(m.cs_home*100)}%;background:${TC(m.home)}59"></i><i class="r" style="width:${Math.round(m.cs_away*100)}%;background:${TC(m.away)}59"></i></div>
       <div class="cslab"><span>CS ${Math.round(m.cs_home*100)}%</span><span class="info" data-tip="${TIP_CS}">i</span><span>CS ${Math.round(m.cs_away*100)}%</span></div>
     </div>`;
   }).join('');
@@ -455,6 +460,7 @@ function buildRatings(){
 
 const PALETTE=['#37003C','#E90052','#0064FF','#00A85A','#FF7A00','#7B2CBF','#0096A0','#B8005C','#5A6B00','#D63A00','#005FCC','#8A0F8A','#2E7D32','#C2185B','#455A64','#9E6B00','#3949AB','#00838F','#AD1457','#6D4C41'];
 function teamColor(t){
+  if(TEAMCOLORS[t]) return TEAMCOLORS[t];
   const names=Object.keys(RATINGS).sort();
   return PALETTE[names.indexOf(t)%PALETTE.length];
 }
