@@ -41,7 +41,7 @@ h2::after{content:'';display:block;width:44px;height:4px;border-radius:2px;backg
 .hint{font-size:.8rem;color:var(--soft)}
 
 /* quadro da jornada */
-.matches{display:grid;grid-template-columns:repeat(auto-fill,minmax(212px,1fr));gap:12px}
+.matches{display:grid;grid-template-columns:repeat(auto-fill,minmax(238px,1fr));gap:12px}
 .match{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px;border-top:4px solid var(--purple)}
 .match .teams{display:flex;justify-content:space-between;font-weight:800;font-size:1rem}
 .match .lam{display:flex;justify-content:space-between;color:var(--soft);font-size:.76rem;margin:2px 0 8px;font-variant-numeric:tabular-nums}
@@ -49,8 +49,8 @@ h2::after{content:'';display:block;width:44px;height:4px;border-radius:2px;backg
 .csbar i{position:absolute;top:0;bottom:0;border-radius:4px;background:linear-gradient(90deg,var(--green),#00d774)}
 .csbar.away i{background:linear-gradient(90deg,var(--cyan),#00b8f0)}
 .cslab{display:flex;justify-content:space-between;font-size:.72rem;color:var(--soft)}
-.oddsrow{display:flex;align-items:center;gap:5px;margin-bottom:9px}
-.oddpill{display:inline-flex;align-items:center;gap:4px;background:#F4F2F8;border:1px solid var(--line);border-radius:7px;padding:2px 7px;font-size:.7rem;color:var(--soft);font-weight:600}
+.oddsrow{display:flex;align-items:center;gap:4px;margin-bottom:9px;min-width:0}
+.oddpill{display:inline-flex;align-items:center;gap:3px;background:#F4F2F8;border:1px solid var(--line);border-radius:7px;padding:2px 5px;font-size:.66rem;color:var(--soft);font-weight:600;white-space:nowrap}
 .oddpill b{color:var(--purple);font-weight:800;font-variant-numeric:tabular-nums}
 .arr{font-style:normal;font-size:.62rem;font-weight:800}
 .arr.up{color:#00A85A}.arr.down{color:var(--pink)}.arr.flat{color:#C9C2D2}
