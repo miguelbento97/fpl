@@ -46,8 +46,8 @@ h2::after{content:'';display:block;width:44px;height:4px;border-radius:2px;backg
 .match .teams{display:flex;justify-content:space-between;font-weight:800;font-size:1rem}
 .match .lam{display:flex;justify-content:space-between;color:var(--soft);font-size:.76rem;margin:2px 0 8px;font-variant-numeric:tabular-nums}
 .csbar{position:relative;height:8px;border-radius:4px;background:#EDEBF2;overflow:hidden;margin-bottom:4px}
-.csbar i{position:absolute;top:0;bottom:0;border-radius:4px;background:linear-gradient(90deg,var(--green),#00d774)}
-.csbar.away i{background:linear-gradient(90deg,var(--cyan),#00b8f0)}
+.csbar i{position:absolute;top:0;bottom:0;left:0;border-radius:4px;background:linear-gradient(90deg,var(--green),#00d774)}
+.csbar.away i{left:auto;right:0;background:linear-gradient(270deg,var(--cyan),#00b8f0)}
 .cslab{display:flex;justify-content:space-between;font-size:.72rem;color:var(--soft)}
 .oddsrow{display:flex;align-items:center;gap:4px;margin-bottom:9px;min-width:0}
 .oddpill{display:inline-flex;align-items:center;gap:3px;background:#F4F2F8;border:1px solid var(--line);border-radius:7px;padding:2px 5px;font-size:.66rem;color:var(--soft);font-weight:600;white-space:nowrap}
@@ -261,7 +261,6 @@ let sortK='score', sortDir=-1;
 
 const $=id=>document.getElementById(id);
 const fmt=n=>'£'+n.toFixed(1);
-
 async function boot(){
   try{
     const [b,o,h]=await Promise.all([
