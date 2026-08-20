@@ -216,10 +216,11 @@ footer{margin-top:40px;font-size:.75rem;color:var(--soft)}
       <thead><tr>
         <th data-k="name">Jogador</th><th data-k="team">Eq.</th><th data-k="pos">Pos</th>
         <th data-k="price">Preço</th><th data-k="owned">Own %</th>
+        <th data-k="titpct" title="Percentagem de titularidades nesta epoca: starts do jogador a dividir pelos jogos da equipa. Aparece a partir de 3 jornadas; ate la o solver usa minutos e ownership como proxy.">Tit %</th>
         <th data-k="oddsigv">Sinal odds</th><th data-k="score" class="sorted">Score ↓</th>
         <th data-k="ppg">PPG 25/26</th><th>Estado</th>
       </tr></thead>
-      <tbody id="tbody"><tr><td colspan="9" class="loading">a carregar 595 jogadores…</td></tr></tbody>
+      <tbody id="tbody"><tr><td colspan="10" class="loading">a carregar 595 jogadores…</td></tr></tbody>
     </table>
   </div>
 </section>
@@ -270,6 +271,9 @@ async function boot(){
     ]);
     if(!b.ok) throw new Error('board: '+b.error);
     PLAYERS=b.data.players; DEADLINE=new Date(b.data.deadline); GW=b.data.next_event;
+    const TGAMES={};
+    PLAYERS.forEach(p=>TGAMES[p.team]=Math.max(TGAMES[p.team]||0,p.starts||0));
+    PLAYERS.forEach(p=>{p.titpct=TGAMES[p.team]>=3?Math.round(100*(p.starts||0)/TGAMES[p.team]):null;});
     if(o.ok && o.data.matches) ODDS=o.data;
     if(h.ok && h.data.snapshots) HIST=h.data.snapshots.map(s=>({...s, t:new Date(s.ts).getTime()}));
     buildTeamSignal();
@@ -509,6 +513,7 @@ function renderChart(){
 function eligible(p,mode){
   if(p.status!=='a'||(p.chance!==null&&p.chance<75))return false;
   if(mode==='all')return true;
+  if(p.titpct!=null) return p.titpct>=60;
   return p.mins>=900||p.owned>=8||(p.pos==='GKP'&&p.price<=4.0);
 }
 function renderTable(){
@@ -528,9 +533,10 @@ function renderTable(){
     return `<tr data-id="${p.id}"><td><b>${p.name}</b> ${tag}</td><td>${p.team}</td>
       <td><span class="pos ${p.pos}">${p.pos}</span></td>
       <td><b>${fmt(p.price)}</b></td><td>${p.owned}%</td>
+      <td>${p.titpct==null?'—':p.titpct+'%'}</td>
       <td>${p.oddsig}</td><td><b>${p.score}</b></td>
       <td>${p.ppg||'—'}</td><td>${st}</td></tr>`;
-  }).join('')||'<tr><td colspan="9" class="loading">sem resultados</td></tr>';
+  }).join('')||'<tr><td colspan="10" class="loading">sem resultados</td></tr>';
 }
 $('tbody').addEventListener('click',e=>{
   const tr=e.target.closest('tr'); if(!tr||!tr.dataset.id)return;
