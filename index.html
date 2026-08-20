@@ -49,6 +49,15 @@ h2::after{content:'';display:block;width:44px;height:4px;border-radius:2px;backg
 .csbar i{position:absolute;top:0;bottom:0;border-radius:4px;background:linear-gradient(90deg,var(--green),#00d774)}
 .csbar.away i{background:linear-gradient(90deg,var(--cyan),#00b8f0)}
 .cslab{display:flex;justify-content:space-between;font-size:.72rem;color:var(--soft)}
+.oddsrow{display:flex;align-items:center;gap:5px;margin-bottom:9px}
+.oddpill{display:inline-flex;align-items:center;gap:4px;background:#F4F2F8;border:1px solid var(--line);border-radius:7px;padding:2px 7px;font-size:.7rem;color:var(--soft);font-weight:600}
+.oddpill b{color:var(--purple);font-weight:800;font-variant-numeric:tabular-nums}
+.arr{font-style:normal;font-size:.62rem;font-weight:800}
+.arr.up{color:#00A85A}.arr.down{color:var(--pink)}.arr.flat{color:#C9C2D2}
+.info{display:inline-flex;width:15px;height:15px;min-width:15px;border-radius:50%;background:var(--line);color:var(--soft);font-size:.6rem;font-weight:800;align-items:center;justify-content:center;cursor:help;position:relative;font-style:normal}
+.oddsrow .info{margin-left:auto}
+.info:hover::after{content:attr(data-tip);position:absolute;bottom:145%;left:50%;transform:translateX(-50%);background:var(--purple);color:#fff;padding:8px 10px;border-radius:8px;width:200px;font-size:.68rem;font-weight:500;line-height:1.45;z-index:20;text-align:left;box-shadow:0 4px 12px rgba(0,0,0,.25)}
+.info:hover::before{content:'';position:absolute;bottom:128%;left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-color:var(--purple);z-index:20}
 
 /* solver */
 .panel{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:20px}
@@ -254,13 +263,15 @@ const fmt=n=>'£'+n.toFixed(1);
 
 async function boot(){
   try{
-    const [b,o]=await Promise.all([
+    const [b,o,h]=await Promise.all([
       fetch(API+'?resource=board&horizon=5').then(r=>r.json()),
-      fetch(API+'?resource=odds').then(r=>r.json())
+      fetch(API+'?resource=odds').then(r=>r.json()),
+      fetch(API+'?resource=odds_history').then(r=>r.json()).catch(()=>({ok:false}))
     ]);
     if(!b.ok) throw new Error('board: '+b.error);
     PLAYERS=b.data.players; DEADLINE=new Date(b.data.deadline); GW=b.data.next_event;
     if(o.ok && o.data.matches) ODDS=o.data;
+    if(h.ok && h.data.snapshots) HIST=h.data.snapshots.map(s=>({...s, t:new Date(s.ts).getTime()}));
     buildTeamSignal();
     scoreAll();
     renderMatches(); renderTable(); renderChips(); tickCountdown();
@@ -279,8 +290,12 @@ document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{
   b.classList.add('on');
   $('tab-plantel').hidden = b.dataset.tab!=='plantel';
   $('tab-forca').hidden = b.dataset.tab!=='forca';
-  if(b.dataset.tab==='forca' && !HISTLOADED) loadHistory();
+  if(b.dataset.tab==='forca'){
+    if(!HIST) loadHistory();
+    else if(!HISTLOADED){renderForca();HISTLOADED=true;}
+  }
 });
+function renderForca(){renderFlux();buildRatings();renderTeamChips();renderChart();}
 
 function buildTeamSignal(){
   TEAMSIG={};
@@ -316,27 +331,50 @@ function scoreAll(){
 }
 
 /* ---------- quadro da jornada ---------- */
+const TIP_ODDS='Odds decimais justas: casa (1), empate (X), fora (2). Mediana de casas UK com a margem removida, por isso ligeiramente acima do que ves nas casas. Seta: movimento desde o snapshot anterior (verde subiu, rosa desceu).';
+const TIP_LAM='λ = golos esperados de cada equipa neste jogo, implicitos nas odds do mercado (ajuste Poisson ao 1X2 e ao over 2.5).';
+const TIP_CS='CS = probabilidade de manter a baliza a zeros (clean sheet), derivada do λ do adversario.';
+function histPair(home,away){
+  if(!HIST) return null;
+  const rows=HIST.filter(s=>s.home===home&&s.away===away&&s.pH!=null).sort((a,b)=>a.t-b.t);
+  if(!rows.length) return null;
+  return {cur:rows[rows.length-1], prev:rows.length>1?rows[rows.length-2]:null};
+}
+function oddPill(lab,pCur,pPrev){
+  const oc=1/pCur, fmt=o=>o>=10?o.toFixed(1):o.toFixed(2);
+  let arr='<em class="arr flat">=</em>';
+  if(pPrev){
+    const d=oc-1/pPrev;
+    if(d>0.005)arr='<em class="arr up">▲</em>';
+    else if(d<-0.005)arr='<em class="arr down">▼</em>';
+  }
+  return `<span class="oddpill">${lab} <b>${fmt(oc)}</b>${arr}</span>`;
+}
 function renderMatches(){
   const box=$('matches');
   if(!ODDS.matches.length){box.innerHTML='<div class="hint">Sem snapshot de odds. Corre snapshotOdds no Apps Script.</div>';return;}
-  box.innerHTML=ODDS.matches.map(m=>`
+  box.innerHTML=ODDS.matches.map(m=>{
+    const hp=histPair(m.home,m.away);
+    const oddsrow=hp?`<div class="oddsrow">${oddPill('1',hp.cur.pH,hp.prev&&hp.prev.pH)}${oddPill('X',hp.cur.pD,hp.prev&&hp.prev.pD)}${oddPill('2',hp.cur.pA,hp.prev&&hp.prev.pA)}<span class="info" data-tip="${TIP_ODDS}">i</span></div>`:'';
+    return `
     <div class="match">
+      ${oddsrow}
       <div class="teams"><span>${m.home}</span><span>${m.away}</span></div>
-      <div class="lam"><span>λ ${m.lambda_home.toFixed(2)}</span><span>λ ${m.lambda_away.toFixed(2)}</span></div>
+      <div class="lam"><span>λ ${m.lambda_home.toFixed(2)}</span><span class="info" data-tip="${TIP_LAM}">i</span><span>λ ${m.lambda_away.toFixed(2)}</span></div>
       <div class="csbar"><i style="width:${Math.round(m.cs_home*100)}%"></i></div>
       <div class="csbar away"><i style="width:${Math.round(m.cs_away*100)}%"></i></div>
-      <div class="cslab"><span>CS ${Math.round(m.cs_home*100)}%</span><span>CS ${Math.round(m.cs_away*100)}%</span></div>
-    </div>`).join('');
+      <div class="cslab"><span>CS ${Math.round(m.cs_home*100)}%</span><span class="info" data-tip="${TIP_CS}">i</span><span>CS ${Math.round(m.cs_away*100)}%</span></div>
+    </div>`;
+  }).join('');
 }
 
 /* ---------- historico + forca ---------- */
 async function loadHistory(){
-  HISTLOADED=true;
   try{
     const r=await fetch(API+'?resource=odds_history').then(x=>x.json());
     if(!r.ok) throw new Error(r.error);
     HIST=r.data.snapshots.map(s=>({...s, t:new Date(s.ts).getTime()}));
-    renderFlux(); buildRatings(); renderTeamChips(); renderChart();
+    renderForca(); HISTLOADED=true;
   }catch(e){
     $('flux').innerHTML='<div class="hint">Erro no histórico: '+e.message+'</div>';
   }
