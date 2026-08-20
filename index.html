@@ -15,6 +15,7 @@
   --radius:12px;
 }
 *{box-sizing:border-box;margin:0;padding:0}
+[hidden]{display:none!important}
 body{background:var(--bg);color:var(--purple);font:15px/1.5 'Inter',sans-serif;-webkit-font-smoothing:antialiased}
 .wrap{max-width:1180px;margin:0 auto;padding:0 20px 80px}
 
@@ -28,6 +29,11 @@ body{background:var(--bg);color:var(--purple);font:15px/1.5 'Inter',sans-serif;-
 .deadline{background:var(--purple);color:#fff;border-radius:var(--radius);padding:12px 20px;text-align:right}
 .deadline small{font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;opacity:.8}
 .deadline .num{font-size:1.55rem;font-weight:800;color:var(--green);font-variant-numeric:tabular-nums}
+
+/* tabs */
+.tabs{display:flex;gap:8px;margin:22px 0 6px}
+.tabs button{font:800 .85rem 'Inter';border:2px solid var(--purple);background:transparent;color:var(--purple);border-radius:999px;padding:9px 22px;cursor:pointer}
+.tabs button.on{background:var(--purple);color:var(--green)}
 
 section{margin:34px 0}
 h2{font-size:1.15rem;font-weight:800;text-transform:uppercase;letter-spacing:.02em;margin-bottom:14px}
@@ -95,6 +101,29 @@ td b{font-weight:700}
 .tag.lock{background:var(--purple);color:var(--green)}
 .tag.exc{background:var(--pink);color:#fff}
 .flag{color:var(--pink);font-weight:700}
+
+/* forca das equipas */
+.flux{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+.fluxcard{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px;border-top:4px solid var(--purple)}
+.fluxcard .teams{display:flex;justify-content:space-between;font-weight:800}
+.fluxrow{display:flex;justify-content:space-between;align-items:center;font-size:.78rem;color:var(--soft);margin-top:6px;font-variant-numeric:tabular-nums}
+.delta{font-weight:800}
+.delta.up{color:#00A85A}.delta.down{color:var(--pink)}.delta.flat{color:var(--soft)}
+.spark{width:74px;height:20px}
+.spark polyline{fill:none;stroke:var(--purple);stroke-width:2}
+.teamchips{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0}
+.tchip{font:700 .74rem 'Inter';border:1.5px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 12px;cursor:pointer}
+.tchip.on{border-color:var(--purple);background:var(--purple);color:var(--green)}
+.chartbox{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px}
+.chartbox svg{width:100%;height:auto;display:block}
+.axis{stroke:var(--line);stroke-width:1}
+.axis-lab{font:600 11px 'Inter';fill:var(--soft)}
+.zero{stroke:#C9C2D2;stroke-dasharray:4 4}
+.tline{fill:none;stroke-width:2.5}
+.tdot{stroke:#fff;stroke-width:1.5}
+.tlab{font:800 12px 'Inter'}
+.algo{font-size:.78rem;color:var(--soft);margin-top:10px;line-height:1.55}
+
 footer{margin-top:40px;font-size:.75rem;color:var(--soft)}
 .loading{padding:60px;text-align:center;color:var(--soft);font-weight:600}
 @media (prefers-reduced-motion: reduce){*{transition:none!important}}
@@ -115,6 +144,13 @@ footer{margin-top:40px;font-size:.75rem;color:var(--soft)}
 </div></div></div>
 
 <div class="wrap">
+
+<nav class="tabs">
+  <button class="on" data-tab="plantel">Plantel</button>
+  <button data-tab="forca">Força das equipas</button>
+</nav>
+
+<div id="tab-plantel">
 
 <section>
   <h2>Quadro da jornada</h2>
@@ -179,6 +215,27 @@ footer{margin-top:40px;font-size:.75rem;color:var(--soft)}
   </div>
 </section>
 
+</div>
+
+<div id="tab-forca" hidden>
+
+<section>
+  <h2>Flutuações da jornada <span id="fluxGw"></span></h2>
+  <div class="hint" style="margin-bottom:12px">Primeiro snapshot vs último, por jogo. Movimento de λ ou CS entre snapshots revela team news e lineups a chegar ao mercado. Sparkline: evolução do λ da casa.</div>
+  <div class="flux" id="flux"><div class="loading">a carregar histórico…</div></div>
+</section>
+
+<section>
+  <h2>Força ao longo da época</h2>
+  <div class="chartbox">
+    <div class="teamchips" id="teamchips"></div>
+    <svg id="chart" viewBox="0 0 920 400" preserveAspectRatio="xMidYMid meet"></svg>
+    <div class="algo"><b>Como é calculado:</b> por jornada uso as closing lines (último snapshot antes do kickoff) de cada jogo. Força bruta = λ marcados − λ sofridos (diferença de golos esperada implícita nas odds). Ajusto ao fator casa subtraindo a vantagem média de jogar em casa estimada na própria amostra, para tudo ficar em campo neutro. A linha é uma média móvel exponencial (α=0.4): reage a picos de forma sem histerismo de um só jogo. Escala em golos: +1.0 significa que o mercado espera que a equipa ganhe por 1 golo a um adversário médio em campo neutro. Isto mede a perceção do mercado, não resultados.</div>
+  </div>
+</section>
+
+</div>
+
 <footer>Ferramenta pessoal, sem afiliação com a Premier League. Dados: API oficial FPL + consenso de casas UK (mediana, overround removido, ajuste Poisson). Probabilidades derivadas, nunca preços em bruto.</footer>
 </div>
 
@@ -186,8 +243,10 @@ footer{margin-top:40px;font-size:.75rem;color:var(--soft)}
 const API='https://script.google.com/macros/s/AKfycbyr2Z-XaYUTkSQ6JbRmECZXsjfChhK5iaqBD0RKvVAP43JKgXZ6cywna7WdMr2qf4x9/exec';
 const LG_AVG_LAMBDA=1.35, LG_AVG_CS=0.28;
 let PLAYERS=[], ODDS={matches:[]}, TEAMSIG={}, DEADLINE=null, GW=null;
+let HIST=null, HISTLOADED=false;
 let locks=new Set(JSON.parse(localStorage.getItem('fpl_locks')||'[]'));
 let excls=new Set(JSON.parse(localStorage.getItem('fpl_excls')||'[]'));
+let selTeams=new Set(JSON.parse(localStorage.getItem('fpl_selteams')||'[]'));
 let sortK='score', sortDir=-1;
 
 const $=id=>document.getElementById(id);
@@ -213,6 +272,15 @@ async function boot(){
     $('stamp').innerHTML='<span class="flag">Erro a carregar: '+e.message+'</span>';
   }
 }
+
+/* ---------- tabs ---------- */
+document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('.tabs button').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on');
+  $('tab-plantel').hidden = b.dataset.tab!=='plantel';
+  $('tab-forca').hidden = b.dataset.tab!=='forca';
+  if(b.dataset.tab==='forca' && !HISTLOADED) loadHistory();
+});
 
 function buildTeamSignal(){
   TEAMSIG={};
@@ -259,6 +327,144 @@ function renderMatches(){
       <div class="csbar away"><i style="width:${Math.round(m.cs_away*100)}%"></i></div>
       <div class="cslab"><span>CS ${Math.round(m.cs_home*100)}%</span><span>CS ${Math.round(m.cs_away*100)}%</span></div>
     </div>`).join('');
+}
+
+/* ---------- historico + forca ---------- */
+async function loadHistory(){
+  HISTLOADED=true;
+  try{
+    const r=await fetch(API+'?resource=odds_history').then(x=>x.json());
+    if(!r.ok) throw new Error(r.error);
+    HIST=r.data.snapshots.map(s=>({...s, t:new Date(s.ts).getTime()}));
+    renderFlux(); buildRatings(); renderTeamChips(); renderChart();
+  }catch(e){
+    $('flux').innerHTML='<div class="hint">Erro no histórico: '+e.message+'</div>';
+  }
+}
+
+function groupMatches(rows){
+  const g={};
+  rows.forEach(s=>{
+    const k=s.gw+'|'+s.home+'|'+s.away;
+    (g[k]=g[k]||[]).push(s);
+  });
+  Object.values(g).forEach(a=>a.sort((x,y)=>x.t-y.t));
+  return g;
+}
+
+function renderFlux(){
+  const curGw=Math.max(...HIST.map(s=>s.gw||0));
+  $('fluxGw').textContent='· GW'+curGw;
+  const g=groupMatches(HIST.filter(s=>s.gw===curGw));
+  const dl=(a,b,dec,suf)=>{
+    const d=b-a, v=(d>0?'+':'')+d.toFixed(dec)+(suf||'');
+    const c=Math.abs(d)<(suf?0.5:0.025)?'flat':(d>0?'up':'down');
+    return '<span class="delta '+c+'">'+(c==='flat'?'=':v)+'</span>';
+  };
+  $('flux').innerHTML=Object.values(g).map(a=>{
+    const f=a[0], l=a[a.length-1];
+    const xs=a.map((s,i)=>Math.round(i*(70/Math.max(a.length-1,1)))+2);
+    const lamRange=[Math.min(...a.map(s=>s.lambda_home)),Math.max(...a.map(s=>s.lambda_home))];
+    const span=Math.max(lamRange[1]-lamRange[0],0.1);
+    const ys=a.map(s=>18-((s.lambda_home-lamRange[0])/span)*14);
+    const pts=xs.map((x,i)=>x+','+ys[i].toFixed(1)).join(' ');
+    return `<div class="fluxcard">
+      <div class="teams"><span>${l.home}</span><svg class="spark" viewBox="0 0 74 20"><polyline points="${pts}"/></svg><span>${l.away}</span></div>
+      <div class="fluxrow"><span>λ ${l.home}</span><span>${f.lambda_home.toFixed(2)} → ${l.lambda_home.toFixed(2)} ${dl(f.lambda_home,l.lambda_home,2)}</span></div>
+      <div class="fluxrow"><span>λ ${l.away}</span><span>${f.lambda_away.toFixed(2)} → ${l.lambda_away.toFixed(2)} ${dl(f.lambda_away,l.lambda_away,2)}</span></div>
+      <div class="fluxrow"><span>CS ${l.home}</span><span>${Math.round(f.cs_home*100)}% → ${Math.round(l.cs_home*100)}% ${dl(f.cs_home*100,l.cs_home*100,0,'pp')}</span></div>
+      <div class="fluxrow"><span>CS ${l.away}</span><span>${Math.round(f.cs_away*100)}% → ${Math.round(l.cs_away*100)}% ${dl(f.cs_away*100,l.cs_away*100,0,'pp')}</span></div>
+      <div class="fluxrow"><span>snapshots</span><span>${a.length}</span></div>
+    </div>`;
+  }).join('');
+}
+
+let RATINGS={}, GWS=[];
+function buildRatings(){
+  const g=groupMatches(HIST);
+  // closing line por jogo
+  const closings=Object.values(g).map(a=>a[a.length-1]).filter(s=>s.gw);
+  // vantagem casa: mediana de (lambda_home - lambda_away)
+  const diffs=closings.map(s=>s.lambda_home-s.lambda_away).sort((a,b)=>a-b);
+  const hAdv=diffs.length?(diffs.length%2?diffs[(diffs.length-1)/2]:(diffs[diffs.length/2-1]+diffs[diffs.length/2])/2):0;
+  // xGD ajustado por equipa por gw
+  const perGw={};
+  closings.forEach(s=>{
+    (perGw[s.gw]=perGw[s.gw]||{});
+    perGw[s.gw][s.home]=(s.lambda_home-s.lambda_away)-hAdv;
+    perGw[s.gw][s.away]=(s.lambda_away-s.lambda_home)+hAdv;
+  });
+  GWS=Object.keys(perGw).map(Number).sort((a,b)=>a-b);
+  RATINGS={};
+  const ALPHA=0.4;
+  GWS.forEach(gw=>{
+    Object.entries(perGw[gw]).forEach(([team,x])=>{
+      if(!RATINGS[team]) RATINGS[team]=[];
+      const prev=RATINGS[team].length?RATINGS[team][RATINGS[team].length-1].r:null;
+      const r=prev===null?x:ALPHA*x+(1-ALPHA)*prev;
+      RATINGS[team].push({gw:gw, r:Math.round(r*100)/100, raw:Math.round(x*100)/100});
+    });
+  });
+  if(!selTeams.size){
+    Object.entries(RATINGS)
+      .sort((a,b)=>b[1][b[1].length-1].r - a[1][a[1].length-1].r)
+      .slice(0,6).forEach(([t])=>selTeams.add(t));
+  }
+}
+
+const PALETTE=['#37003C','#E90052','#0064FF','#00A85A','#FF7A00','#7B2CBF','#0096A0','#B8005C','#5A6B00','#D63A00','#005FCC','#8A0F8A','#2E7D32','#C2185B','#455A64','#9E6B00','#3949AB','#00838F','#AD1457','#6D4C41'];
+function teamColor(t){
+  const names=Object.keys(RATINGS).sort();
+  return PALETTE[names.indexOf(t)%PALETTE.length];
+}
+
+function renderTeamChips(){
+  const names=Object.keys(RATINGS).sort();
+  $('teamchips').innerHTML=names.map(t=>
+    `<button class="tchip${selTeams.has(t)?' on':''}" data-t="${t}">${t}</button>`).join('');
+  document.querySelectorAll('.tchip').forEach(c=>c.onclick=()=>{
+    const t=c.dataset.t;
+    selTeams.has(t)?selTeams.delete(t):selTeams.add(t);
+    localStorage.setItem('fpl_selteams',JSON.stringify([...selTeams]));
+    c.classList.toggle('on');
+    renderChart();
+  });
+}
+
+function renderChart(){
+  const svg=$('chart');
+  const W=920,H=400,L=44,R=54,T=16,B=34;
+  const teams=[...selTeams].filter(t=>RATINGS[t]);
+  const allR=teams.flatMap(t=>RATINGS[t].map(p=>p.r));
+  let yMin=Math.min(-0.5,...allR)-0.2, yMax=Math.max(0.5,...allR)+0.2;
+  const gwMin=GWS[0]||1, gwMax=Math.max(GWS[GWS.length-1]||1, gwMin+1);
+  const X=gw=>L+(gw-gwMin)/(gwMax-gwMin)*(W-L-R);
+  const Y=r=>T+(yMax-r)/(yMax-yMin)*(H-T-B);
+  let out='';
+  // grelha y
+  for(let v=Math.ceil(yMin*2)/2; v<=yMax; v+=0.5){
+    out+=`<line class="axis" x1="${L}" y1="${Y(v)}" x2="${W-R}" y2="${Y(v)}"/>`;
+    out+=`<text class="axis-lab" x="${L-6}" y="${Y(v)+4}" text-anchor="end">${v>0?'+':''}${v.toFixed(1)}</text>`;
+  }
+  out+=`<line class="zero" x1="${L}" y1="${Y(0)}" x2="${W-R}" y2="${Y(0)}"/>`;
+  // eixo x
+  for(let gw=gwMin; gw<=gwMax; gw++){
+    out+=`<text class="axis-lab" x="${X(gw)}" y="${H-10}" text-anchor="middle">GW${gw}</text>`;
+  }
+  // linhas
+  teams.forEach(t=>{
+    const col=teamColor(t), pts=RATINGS[t];
+    if(pts.length>1){
+      out+=`<polyline class="tline" stroke="${col}" points="${pts.map(p=>X(p.gw)+','+Y(p.r)).join(' ')}"/>`;
+    }
+    pts.forEach(p=>{
+      out+=`<circle class="tdot" cx="${X(p.gw)}" cy="${Y(p.r)}" r="4.5" fill="${col}"><title>${t} GW${p.gw}: ${p.r>0?'+':''}${p.r} (jogo: ${p.raw>0?'+':''}${p.raw})</title></circle>`;
+    });
+    const last=pts[pts.length-1];
+    out+=`<text class="tlab" x="${X(last.gw)+9}" y="${Y(last.r)+4}" fill="${col}">${t}</text>`;
+  });
+  if(!teams.length) out+=`<text class="axis-lab" x="${W/2}" y="${H/2}" text-anchor="middle">seleciona equipas acima</text>`;
+  svg.innerHTML=out;
 }
 
 /* ---------- tabela ---------- */
