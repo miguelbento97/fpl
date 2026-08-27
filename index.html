@@ -328,9 +328,17 @@ document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{
 });
 function renderForca(){renderFlux();buildRatings();renderTeamChips();renderChart();}
 
+function nextGwMatches(){
+  const seen=new Set(), out=[];
+  (ODDS.matches||[]).slice().sort((a,b)=>new Date(a.commence)-new Date(b.commence)).forEach(m=>{
+    if(seen.has(m.home)||seen.has(m.away)) return;
+    seen.add(m.home); seen.add(m.away); out.push(m);
+  });
+  return out;
+}
 function buildTeamSignal(){
   TEAMSIG={};
-  (ODDS.matches||[]).forEach(m=>{
+  nextGwMatches().forEach(m=>{
     TEAMSIG[m.home]={lam:m.lambda_home,cs:m.cs_home,opp:m.away,home:true};
     TEAMSIG[m.away]={lam:m.lambda_away,cs:m.cs_away,opp:m.home,home:false};
   });
@@ -384,7 +392,7 @@ function oddPill(lab,pCur,pPrev){
 function renderMatches(){
   const box=$('matches');
   if(!ODDS.matches.length){box.innerHTML='<div class="hint">Sem snapshot de odds. Corre snapshotOdds no Apps Script.</div>';return;}
-  box.innerHTML=ODDS.matches.map(m=>{
+  box.innerHTML=nextGwMatches().map(m=>{
     const hp=histPair(m.home,m.away);
     const oddsrow=hp?`<div class="oddsrow">${oddPill('1',hp.cur.pH,hp.prev&&hp.prev.pH)}${oddPill('X',hp.cur.pD,hp.prev&&hp.prev.pD)}${oddPill('2',hp.cur.pA,hp.prev&&hp.prev.pA)}<span class="info" data-tip="${TIP_ODDS}">i</span></div>`:'';
     return `
