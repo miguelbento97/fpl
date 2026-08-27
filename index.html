@@ -160,6 +160,7 @@ footer{margin-top:40px;font-size:.75rem;color:var(--soft)}
 <nav class="tabs">
   <button class="on" data-tab="plantel">Plantel</button>
   <button data-tab="forca">Força das equipas</button>
+  <button data-tab="equipa">A minha equipa</button>
 </nav>
 
 <div id="tab-plantel">
@@ -249,6 +250,25 @@ footer{margin-top:40px;font-size:.75rem;color:var(--soft)}
 
 </div>
 
+<div id="tab-equipa" hidden>
+
+<section>
+  <h2>Saka Doku FC <span id="eqGw"></span></h2>
+  <div class="hint" style="margin-bottom:12px">Plantel real carregado da FPL. O motor respeita o teu orçamento (valor de venda mais banco), a cota de 3 por clube e desconta 4 pontos por cada transferência acima da livre.</div>
+  <div class="panel">
+    <div class="controls">
+      <div class="ctrl"><label>Transferências a considerar</label>
+        <select id="eqN"><option value="1">1 (grátis)</option><option value="2">2 (-4)</option><option value="3">3 (-8)</option></select></div>
+      <div class="ctrl"><label>Transferências livres</label>
+        <select id="eqFree"><option value="1">1</option><option value="2">2</option><option value="0">0</option></select></div>
+      <button id="eqRun">Sugerir transferências</button>
+    </div>
+    <div id="eqOut"><div class="loading">a carregar o teu plantel…</div></div>
+  </div>
+</section>
+
+</div>
+
 <footer>Ferramenta pessoal, sem afiliação com a Premier League. Dados: API oficial FPL + consenso de casas UK (mediana, overround removido, ajuste Poisson). Probabilidades derivadas, nunca preços em bruto.</footer>
 </div>
 
@@ -259,6 +279,7 @@ const TEAMCOLORS={ARS:'#EF1B22',AVL:'#7B1F4B',BOU:'#A31621',BHA:'#005BBB',BRE:'#
 const TC=t=>TEAMCOLORS[t]||'#37003C';
 let PLAYERS=[], ODDS={matches:[]}, TEAMSIG={}, DEADLINE=null, GW=null;
 let HIST=null, HISTLOADED=false;
+let MYSQUAD=null, MYLOADED=false, MYBANK=0;
 let locks=new Set(JSON.parse(localStorage.getItem('fpl_locks')||'[]'));
 let excls=new Set(JSON.parse(localStorage.getItem('fpl_excls')||'[]'));
 let selTeams=new Set(JSON.parse(localStorage.getItem('fpl_selteams')||'[]'));
@@ -298,6 +319,8 @@ document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{
   b.classList.add('on');
   $('tab-plantel').hidden = b.dataset.tab!=='plantel';
   $('tab-forca').hidden = b.dataset.tab!=='forca';
+  $('tab-equipa').hidden = b.dataset.tab!=='equipa';
+  if(b.dataset.tab==='equipa' && !MYLOADED) loadMyTeam();
   if(b.dataset.tab==='forca'){
     if(!HIST) loadHistory();
     else if(!HISTLOADED){renderForca();HISTLOADED=true;}
@@ -654,6 +677,107 @@ function showResult(s,cap){
   $('rBench').innerHTML=s.filter(p=>!xi.has(p)).sort((a,b)=>b.score-a.score)
     .map(p=>`<li><span>${p.name} (${p.pos}, ${p.team})</span><span>${fmt(p.price)}</span></li>`).join('');
 }
+
+/* ---------- a minha equipa ---------- */
+async function loadMyTeam(){
+  MYLOADED=true;
+  try{
+    const gw=Math.max(1,(GW||2)-1);
+    const r=await fetch(API+'?resource=picks&gw='+gw).then(x=>x.json());
+    if(!r.ok) throw new Error(r.error);
+    const byId={}; PLAYERS.forEach(p=>byId[p.id]=p);
+    MYBANK=(r.data.entry_history&&r.data.entry_history.bank||0)/10;
+    MYSQUAD=(r.data.picks||[]).map(k=>{
+      const p=byId[k.element];
+      if(!p) return null;
+      const buy=(k.purchase_price!=null?k.purchase_price:p.price*10)/10;
+      const now=p.price;
+      const sell=now<=buy?now:buy+Math.floor((now-buy)*10/2)/10;
+      return Object.assign({},p,{sell:sell, buy:buy});
+    }).filter(Boolean);
+    $('eqGw').textContent='· GW'+GW;
+    renderMyTeam();
+  }catch(e){
+    $('eqOut').innerHTML='<div class="hint"><span class="flag">Erro: '+e.message+'</span></div>';
+  }
+}
+
+function renderMyTeam(){
+  scoreAll();
+  const byId={}; PLAYERS.forEach(p=>byId[p.id]=p);
+  MYSQUAD.forEach(p=>{const f=byId[p.id]; if(f){p.score=f.score;p.oddsig=f.oddsig;p.price=f.price;}});
+  const ev=evalSquad(MYSQUAD,99), xi=new Set(ev.xi);
+  const rows=MYSQUAD.slice().sort((a,b)=>b.score-a.score).map(p=>
+    `<tr><td><b>${p.name}</b> ${xi.has(p)?'':'<span class="tag">banco</span>'}</td><td>${p.team}</td>
+     <td><span class="pos ${p.pos}">${p.pos}</span></td><td>${fmt(p.price)}</td>
+     <td>${fmt(p.sell)}</td><td>${p.oddsig}</td><td><b>${p.score}</b></td>
+     <td>${p.status!=='a'?'<span class="flag">'+(p.news||p.status)+'</span>':(p.chance!==null&&p.chance<100?'<span class="flag">'+p.chance+'%</span>':'ok')}</td></tr>`).join('');
+  $('eqOut').innerHTML=`
+    <div class="kv"><span>Valor de venda do plantel</span><b>${fmt(MYSQUAD.reduce((a,p)=>a+p.sell,0))}</b></div>
+    <div class="kv"><span>No banco</span><b>${fmt(MYBANK)}</b></div>
+    <div class="kv"><span>XI ótimo com este plantel</span><b>${ev.form.join('-')} · ${ev.xiScore.toFixed(1)}</b></div>
+    <div class="tablewrap" style="margin-top:14px"><table><thead><tr>
+      <th>Jogador</th><th>Eq.</th><th>Pos</th><th>Preço</th><th>Venda</th><th>Sinal odds</th><th>Score</th><th>Estado</th>
+    </tr></thead><tbody>${rows}</tbody></table></div>
+    <div id="eqSug"></div>`;
+}
+
+$('eqRun').onclick=()=>{
+  if(!MYSQUAD){alert('Plantel ainda não carregou.');return;}
+  scoreAll();
+  const nT=parseInt($('eqN').value), free=parseInt($('eqFree').value);
+  const hit=Math.max(0,nT-free)*4;
+  const pool=PLAYERS.filter(p=>eligible(p,'strict')&&!MYSQUAD.some(m=>m.id===p.id));
+  const base=evalSquad(MYSQUAD,99).xiScore;
+  const budget=MYSQUAD.reduce((a,p)=>a+p.sell,0)+MYBANK;
+  let best=[];
+  function teamsOk(sq){const t={};for(const p of sq){t[p.team]=(t[p.team]||0)+1;if(t[p.team]>3)return false;}return true;}
+  function tryCombo(outIdx, inList){
+    const sq=MYSQUAD.slice();
+    outIdx.forEach((oi,k)=>{sq[oi]=inList[k];});
+    if(sq.reduce((a,p)=>a+(p.sell!=null?p.sell:p.price),0)>budget+0.001) return;
+    if(!teamsOk(sq)) return;
+    const gain=evalSquad(sq,99).xiScore-base-hit;
+    if(gain>0) best.push({gain:Math.round(gain*100)/100,
+      out:outIdx.map(i=>MYSQUAD[i]), in:inList.slice()});
+  }
+  const idx=MYSQUAD.map((_,i)=>i);
+  if(nT===1){
+    idx.forEach(i=>{
+      const budLeft=budget-MYSQUAD.reduce((a,p,j)=>a+(j===i?0:p.sell),0);
+      pool.filter(c=>c.pos===MYSQUAD[i].pos&&c.price<=budLeft+0.001).forEach(c=>tryCombo([i],[c]));
+    });
+  } else {
+    const cands={};
+    ['GKP','DEF','MID','FWD'].forEach(ps=>{cands[ps]=pool.filter(c=>c.pos===ps).sort((a,b)=>b.score-a.score).slice(0,14);});
+    const weak=idx.slice().sort((a,b)=>MYSQUAD[a].score-MYSQUAD[b].score).slice(0,8);
+    for(let a=0;a<weak.length;a++)for(let b=a+1;b<weak.length;b++){
+      if(nT===2){
+        cands[MYSQUAD[weak[a]].pos].forEach(x=>cands[MYSQUAD[weak[b]].pos].forEach(y=>{
+          if(x.id!==y.id) tryCombo([weak[a],weak[b]],[x,y]);}));
+      } else {
+        for(let c=b+1;c<weak.length;c++){
+          cands[MYSQUAD[weak[a]].pos].slice(0,7).forEach(x=>cands[MYSQUAD[weak[b]].pos].slice(0,7).forEach(y=>
+            cands[MYSQUAD[weak[c]].pos].slice(0,7).forEach(z=>{
+              if(x.id!==y.id&&y.id!==z.id&&x.id!==z.id) tryCombo([weak[a],weak[b],weak[c]],[x,y,z]);})));
+        }
+      }
+    }
+  }
+  best.sort((a,b)=>b.gain-a.gain);
+  const seen=new Set(), top=[];
+  for(const s of best){const k=s.in.map(p=>p.id).sort().join(',');if(seen.has(k))continue;seen.add(k);top.push(s);if(top.length>=5)break;}
+  if(!top.length){
+    $('eqSug').innerHTML='<div class="hint" style="margin-top:16px">Nenhuma transferência melhora o XI depois do custo de '+hit+' pontos. Guardar a transferência é a melhor jogada.</div>';
+    return;
+  }
+  $('eqSug').innerHTML='<h3 style="margin-top:18px;font-size:.9rem;text-transform:uppercase;letter-spacing:.05em">Melhores opções (ganho já líquido de '+hit+' pts)</h3>'+
+    top.map(s=>`<div class="sidecard" style="margin-top:10px">
+      <div class="kv"><span>${s.out.map(p=>p.name).join(' + ')} <b style="color:var(--pink)">sai</b></span>
+      <span>${s.in.map(p=>p.name+' ('+p.team+', '+fmt(p.price)+')').join(' + ')} <b style="color:#00A85A">entra</b></span></div>
+      <div class="kv"><span>Ganho estimado no XI</span><b>+${s.gain}</b></div>
+    </div>`).join('');
+};
 
 /* ---------- countdown ---------- */
 function tickCountdown(){
