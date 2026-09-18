@@ -287,8 +287,19 @@ let sortK='score', sortDir=-1;
 
 const $=id=>document.getElementById(id);
 const fmt=n=>'£'+n.toFixed(1);
+const STATIC={'board':'data/board.json','odds':'data/odds.json','odds_history':'data/odds_history.json'};
 async function getJson(qs, tries){
-  tries = tries || 4;
+  const res = qs.split('&')[0];
+  if(STATIC[res]){
+    try{
+      const r = await fetch(STATIC[res]+'?v='+Math.floor(Date.now()/60000));
+      if(r.ok){
+        const j = await r.json();
+        if(j && j.ok){ j.static = true; return j; }
+      }
+    }catch(e){}
+  }
+  tries = tries || 3;
   for(let i=0;i<tries;i++){
     try{
       const r = await fetch(API+'?resource='+qs);
@@ -297,12 +308,12 @@ async function getJson(qs, tries){
     }catch(e){}
     await new Promise(s=>setTimeout(s, 700*(i+1)));
   }
-  throw new Error('proxy indisponivel ('+qs.split('&')[0]+')');
+  throw new Error('sem dados ('+res+'): proxy e ficheiro estatico indisponiveis');
 }
 
 async function boot(){
   try{
-    const b=await getJson('board&horizon=5');
+    const b=await getJson('board&horizon=5&lite=1');
     const o=await getJson('odds').catch(()=>({ok:false}));
     const h=await getJson('odds_history').catch(()=>({ok:false}));
     if(!b.ok) throw new Error('board: '+b.error);
