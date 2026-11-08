@@ -166,10 +166,7 @@ footer{margin-top:40px;font-size:.75rem;color:var(--soft)}
 .eobar{position:relative;height:7px;border-radius:4px;background:#EDEBF2;min-width:66px;width:100%}
 .eobar i{position:absolute;left:0;top:0;bottom:0;border-radius:4px;background:var(--purple)}
 .eobar i.g{background:#C9C2D2;opacity:.9}
-.sq{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px;margin-bottom:9px}
-.sq summary{cursor:pointer;font-weight:800;display:flex;justify-content:space-between;gap:10px;list-style:none;font-size:.92rem}
-.sq summary::-webkit-details-marker{display:none}
-.sq .xi{display:flex;flex-wrap:wrap;gap:6px;margin-top:11px}
+.xi{display:flex;flex-wrap:wrap;gap:6px}
 .pl{font-size:.73rem;font-weight:700;border:1.5px solid var(--line);border-radius:7px;padding:3px 8px;background:#fff;white-space:nowrap}
 .pl.c{background:var(--purple);color:var(--green);border-color:var(--purple)}
 .pl.b{opacity:.45}
@@ -179,6 +176,11 @@ footer{margin-top:40px;font-size:.75rem;color:var(--soft)}
 .badge.p{background:var(--pink);color:#fff}
 .lgchip{font:700 .74rem 'Inter';border:1.5px solid var(--line);background:#fff;color:var(--soft);border-radius:999px;padding:5px 12px;cursor:pointer}
 .lgchip.on{border-color:var(--purple);background:var(--purple);color:var(--green)}
+.lgrow{cursor:pointer}
+.lgrow:hover td{background:#F7F2FB}
+.car{color:var(--soft);font-size:.7rem}
+.lgsq td{background:#FBFAFC;padding:12px 10px}
+.lgsq .xi{max-width:min(1110px,calc(100vw - 70px))}
 .lgdiff{grid-template-columns:1fr 1fr}
 .lgdiff .sidecard{overflow:auto;min-width:0}
 @media(max-width:820px){.lgdiff{grid-template-columns:1fr}}
@@ -221,8 +223,16 @@ footer{margin-top:40px;font-size:.75rem;color:var(--soft)}
     <div class="controls">
       <div class="ctrl"><label>Peso das odds</label>
         <input type="range" id="wOdds" min="0" max="100" value="55"><span class="val" id="wOddsV">55%</span></div>
-      <div class="ctrl"><label>Peso da época passada</label>
-        <input type="range" id="wForm" min="0" max="100" value="65"><span class="val" id="wFormV">65%</span></div>
+      <div class="ctrl"><label>Forma recente vs época</label>
+        <input type="range" id="wForm" min="0" max="100" value="45"><span class="val" id="wFormV">45%</span></div>
+      <div class="ctrl"><label>Liga de referência</label>
+        <select id="objLg">
+          <option value="">nenhuma</option>
+          <option value="154876">BEEFana Premier</option>
+          <option value="163363">Primárias League</option>
+        </select></div>
+      <div class="ctrl"><label>Peso do diferencial</label>
+        <input type="range" id="wEO" min="0" max="100" value="0"><span class="val" id="wEOV">0%</span></div>
       <div class="ctrl"><label>Teto do banco</label>
         <input type="range" id="bCap" min="16" max="24" step="0.5" value="18"><span class="val" id="bCapV">£18.0</span></div>
       <div class="ctrl"><label>Elegibilidade</label>
@@ -265,11 +275,12 @@ footer{margin-top:40px;font-size:.75rem;color:var(--soft)}
       <thead><tr>
         <th data-k="name">Jogador</th><th data-k="team">Eq.</th><th data-k="pos">Pos</th>
         <th data-k="price">Preço</th><th data-k="owned">Own %</th>
+        <th data-k="eolg" title="Posse efetiva na liga escolhida: soma dos multiplicadores (banco 0, titular 1, capitão 2) a dividir pelo número de equipas. Acima de 100% quer dizer que a liga o capitaneia muito.">EO liga</th>
         <th data-k="titpct" title="Percentagem de titularidades nesta epoca: starts do jogador a dividir pelos jogos da equipa. Aparece a partir de 3 jornadas; ate la o solver usa minutos e ownership como proxy.">Tit %</th>
         <th data-k="oddsigv">Sinal odds</th><th data-k="score" class="sorted">Score ↓</th>
-        <th data-k="ppg">PPG 25/26</th><th>Estado</th>
+        <th data-k="ppg">PPG época</th><th>Estado</th>
       </tr></thead>
-      <tbody id="tbody"><tr><td colspan="10" class="loading">a carregar 595 jogadores…</td></tr></tbody>
+      <tbody id="tbody"><tr><td colspan="11" class="loading">a carregar 595 jogadores…</td></tr></tbody>
     </table>
   </div>
 </section>
@@ -331,6 +342,7 @@ footer{margin-top:40px;font-size:.75rem;color:var(--soft)}
 
 <section>
   <h2>Liga ao vivo</h2>
+  <div class="hint" style="margin-bottom:12px">Clica numa linha para abrir o plantel desse adversário. Contorno verde quer dizer que é jogador só dele nesta liga; roxo é o capitão; esbatido é o banco.</div>
   <div class="lgbar" id="lgPick"></div>
   <div class="tablewrap"><div id="lgTable"></div></div>
 </section>
@@ -339,12 +351,6 @@ footer{margin-top:40px;font-size:.75rem;color:var(--soft)}
   <h2>Diferenciais e ownership</h2>
   <div class="hint" style="margin-bottom:12px">EO é a posse efetiva na liga: conta o capitão a dobrar e ignora o banco. Diferencial positivo quer dizer que ganhas terreno quando o jogador pontua.</div>
   <div class="result lgdiff" id="lgDiff"></div>
-</section>
-
-<section>
-  <h2>Plantéis dos adversários</h2>
-  <div class="hint" style="margin-bottom:12px">Verde quer dizer que é jogador só teu nesta liga. Clica para abrir.</div>
-  <div id="lgSquads"></div>
 </section>
 
 </div>
@@ -448,10 +454,12 @@ function buildTeamSignal(){
   });
 }
 
+let EOMAP=null;
 function scoreAll(){
-  const wO=$('wOdds').value/100, wF=$('wForm').value/100;
+  const wO=$('wOdds').value/100, wF=$('wForm').value/100, wE=$('wEO').value/100;
   PLAYERS.forEach(p=>{
-    const base=wF*(p.ppg||0)+(1-wF)*((p.ep_next||0)*1.6);
+    const base=wF*(p.form||0)+(1-wF)*(p.ppg||0);
+    const rel=p.titpct==null?1:(0.35+0.65*Math.min(100,p.titpct)/100);
     const sig=TEAMSIG[p.team];
     let mult;
     if(sig){
@@ -469,7 +477,10 @@ function scoreAll(){
       mult=1+(3.4-(p.fdr||3.4))*0.05;
       p.oddsig='FDR '+(p.fdr??'—'); p.oddsigv=0;
     }
-    p.score=Math.round(base*mult*100)/100;
+    p.eolg = EOMAP ? (EOMAP[p.id]||0) : null;
+    let sc = base*rel*mult;
+    if(wE>0 && p.eolg!=null) sc = sc*(1-wE*(p.eolg/100));
+    p.score=Math.round(sc*100)/100;
   });
 }
 
@@ -673,10 +684,11 @@ function renderTable(){
     return `<tr data-id="${p.id}"><td><b>${p.name}</b> ${tag}</td><td>${p.team}</td>
       <td><span class="pos ${p.pos}">${p.pos}</span></td>
       <td><b>${fmt(p.price)}</b></td><td>${p.owned}%</td>
+      <td>${p.eolg==null?'—':Math.round(p.eolg)+'%'}</td>
       <td>${p.titpct==null?'—':p.titpct+'%'}</td>
       <td>${p.oddsig}</td><td><b>${p.score}</b></td>
       <td>${p.ppg||'—'}</td><td>${st}</td></tr>`;
-  }).join('')||'<tr><td colspan="10" class="loading">sem resultados</td></tr>';
+  }).join('')||'<tr><td colspan="11" class="loading">sem resultados</td></tr>';
 }
 $('tbody').addEventListener('click',e=>{
   const tr=e.target.closest('tr'); if(!tr||!tr.dataset.id)return;
@@ -707,8 +719,25 @@ document.querySelectorAll('th[data-k]').forEach(th=>th.onclick=()=>{
   th.classList.add('sorted');renderTable();
 });
 ['q','fPos','fMax'].forEach(id=>$(id).addEventListener('input',renderTable));
-['wOdds','wForm','bCap'].forEach(id=>$(id).addEventListener('input',()=>{
+
+async function loadEOMap(){
+  const id=$('objLg').value;
+  if(!id){ EOMAP=null; scoreAll(); renderTable(); return; }
+  $('objLg').disabled=true;
+  try{
+    const L=await getLeague(Number(id));
+    const n=(L.entries||[]).length||1, m={};
+    (L.entries||[]).forEach(function(e){ (e.picks||[]).forEach(function(k){ m[k.id]=(m[k.id]||0)+(k.mult||0); }); });
+    Object.keys(m).forEach(function(k){ m[k]=100*m[k]/n; });
+    EOMAP=m;
+  }catch(err){ EOMAP=null; }
+  $('objLg').disabled=false;
+  scoreAll(); renderTable();
+}
+$('objLg').addEventListener('change',loadEOMap);
+['wOdds','wForm','wEO','bCap'].forEach(id=>$(id).addEventListener('input',()=>{
   $('wOddsV').textContent=$('wOdds').value+'%';
+  $('wEOV').textContent=$('wEO').value+'%';
   $('wFormV').textContent=$('wForm').value+'%';
   $('bCapV').textContent='£'+parseFloat($('bCap').value).toFixed(1);
   scoreAll();renderTable();
@@ -1002,7 +1031,6 @@ function renderLiga(){
   renderLgBps(L);
   renderLgTable(L);
   renderLgDiff(L);
-  renderLgSquads(L);
 }
 
 function renderLgPick(){
@@ -1065,7 +1093,20 @@ function renderLgBps(L){
   }).join('');
 }
 
+function lgCounts(L){
+  const c={};
+  (L.entries||[]).forEach(function(e){ (e.picks||[]).forEach(function(p){ c[p.id]=(c[p.id]||0)+1; }); });
+  return c;
+}
+function lgChips(e, counts){
+  return (e.picks||[]).slice().sort(function(a,b){return a.slot-b.slot;}).map(function(p){
+    const r=lgPts(p.id);
+    const cls='pl'+(p.cap?' c':'')+(p.slot>11?' b':'')+(counts[p.id]===1?' dif':'');
+    return '<span class="'+cls+'" title="'+p.team+' · '+p.pos+'">'+p.name+' <i>'+(r.pts*(p.mult||1))+'</i></span>';
+  }).join('');
+}
 function renderLgTable(L){
+  const counts=lgCounts(L);
   const rows=(L.entries||[]).map(function(e){
     const t=lgEntryPts(e);
     return {e:e, gw:t.pts, done:t.done, live:t.live, todo:t.todo, tot:(e.total||0)-(e.gwPts||0)+t.pts};
@@ -1073,11 +1114,22 @@ function renderLgTable(L){
   const capOf=function(e){ const c=(e.picks||[]).filter(function(p){return p.cap;})[0]; return c?c.name:'—'; };
   let h='<table class="lgtable"><thead><tr><th>#</th><th>Equipa</th><th>Capitão</th><th>GW ao vivo</th><th>Por jogar</th><th>Total ao vivo</th></tr></thead><tbody>';
   rows.forEach(function(r,i){
-    h+='<tr class="'+(r.e.entry===ME_ENTRY?'me':'')+'"><td>'+(i+1)+'</td>'+
+    h+='<tr class="lgrow'+(r.e.entry===ME_ENTRY?' me':'')+'" data-i="'+i+'"><td>'+(i+1)+' <span class="car">▸</span></td>'+
       '<td>'+r.e.name+'<br><span class="hint">'+r.e.player+(r.e.chip?' · '+r.e.chip:'')+'</span></td>'+
-      '<td>'+capOf(r.e)+'</td><td>'+r.gw+'</td><td>'+r.todo+'</td><td><b>'+r.tot+'</b></td></tr>';
+      '<td>'+capOf(r.e)+'</td><td>'+r.gw+'</td><td>'+r.todo+'</td><td><b>'+r.tot+'</b></td></tr>'+
+      '<tr class="lgsq" data-sq="'+i+'" hidden><td colspan="6"><div class="xi">'+lgChips(r.e,counts)+'</div>'+
+      '<div class="hint" style="margin-top:8px">'+r.done+' terminados · '+r.live+' a jogar · '+r.todo+' por jogar'+
+      ((r.e.hit||0)?' · −'+r.e.hit+' de transferências':'')+'</div></td></tr>';
   });
   $('lgTable').innerHTML=h+'</tbody></table>';
+  document.querySelectorAll('#lgTable .lgrow').forEach(function(tr){
+    tr.onclick=function(){
+      const d=$('lgTable').querySelector('tr.lgsq[data-sq="'+tr.dataset.i+'"]');
+      if(!d) return;
+      d.hidden=!d.hidden;
+      tr.querySelector('.car').textContent = d.hidden?'▸':'▾';
+    };
+  });
 }
 
 function renderLgDiff(L){
@@ -1116,28 +1168,6 @@ function renderLgDiff(L){
     threats.slice(0,12).map(function(r){return line(r,false);}).join('')+'</tbody></table></div>';
 }
 
-function renderLgSquads(L){
-  const me=lgMe(L);
-  const mineIds={}; if(me)(me.picks||[]).forEach(function(p){ mineIds[p.id]=1; });
-  const counts={};
-  (L.entries||[]).forEach(function(e){ (e.picks||[]).forEach(function(p){ counts[p.id]=(counts[p.id]||0)+1; }); });
-  const others=(L.entries||[]).map(function(e){
-    const t=lgEntryPts(e);
-    return {e:e,t:t,tot:(e.total||0)-(e.gwPts||0)+t.pts};
-  }).sort(function(a,b){return b.tot-a.tot||b.t.pts-a.t.pts;});
-  $('lgSquads').innerHTML=others.map(function(o,oi){
-    const e=o.e, t=o.t;
-    const picks=(e.picks||[]).slice().sort(function(a,b){return a.slot-b.slot;});
-    const chips=picks.map(function(p){
-      const r=lgPts(p.id);
-      const cls='pl'+(p.cap?' c':'')+(p.slot>11?' b':'')+(counts[p.id]===1?' dif':'');
-      return '<span class="'+cls+'">'+p.name+' <i>'+(r.pts*(p.mult||1))+'</i></span>';
-    }).join('');
-    return '<details class="sq"'+(e.entry===ME_ENTRY?' open':'')+'><summary><span>'+(oi+1)+'. '+e.name+
-      ' <span class="hint" style="font-weight:600">'+e.player+'</span></span><span>'+t.pts+' pts · '+t.todo+' por jogar</span></summary>'+
-      '<div class="xi">'+chips+'</div></details>';
-  }).join('');
-}
 </script>
 </body>
 </html>
